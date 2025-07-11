@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blackjack</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #111;
+      color: #e6e6e6;
+      padding: 20px;
+    }
+    .game-section {
+      margin-top: 20px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px;
+      background: #222;
+      color:  #e6e6e6;
+      border: 1px solid #0f0;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .hand {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>---Blackjack---</h1>
+
+  <div id="rules">
+    <div>Dealer stands on 17 or higher.</div>
+    <br>
+    <div>If you run out of money, just restart the game.</div>
+    <br>
+  </div>
+  <div id="pre-game">
+    <div>Bank: $<span id="bank">100</span></div>
+    <div class="game-section" id="result" style="display:none">
+      <div class="hand">Final Dealer: <span id="final-dealer-hand"></span></div>
+      <div class="hand">Final Player: <span id="final-player-hand"></span></div>
+    </div>
+    <div id="final-message" style="margin-top: 10px; font-weight: bold;"></div>
+    <div class="game-section">
+      <div>Place your bet:</div>
+      <div id="bet-buttons">
+        <button onclick="placeBet(1)">$1</button>
+        <button onclick="placeBet(5)">$5</button>
+        <button onclick="placeBet(10)">$10</button>
+        <button onclick="placeBet(25)">$25</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="game-section" id="gameplay" style="display:none">
+    <div class="hand">Dealer: <span id="dealer-hand"></span></div>
+    <div class="hand">Player: <span id="player-hand"></span></div>
+    <button onclick="hit()">Hit</button>
+    <button onclick="stand()">Stand</button>
+    <button onclick="doubleBet()">Double</button>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    let bank = 100;
+    let bet = 0;
+    let playerCards = [];
+    let dealerCards = [];
+    let gameOver = false;
+
+    function updateBank() {
+      document.getElementById('bank').textContent = bank;
+    }
+
+    function drawCard() {
+      return Math.floor(Math.random() * 10) + 1;
+    }
+
+    function sumHand(hand) {
+      return hand.reduce((a, b) => a + b, 0);
+    }
+
+    function renderHands(hideDealer = true) {
+      document.getElementById('player-hand').textContent = `${playerCards.join(', ')} (Total: ${sumHand(playerCards)})`;
+      let dealerDisplay = hideDealer ? `${dealerCards[0]}, ?` : `${dealerCards.join(', ')} (Total: ${sumHand(dealerCards)})`;
+      document.getElementById('dealer-hand').textContent = dealerDisplay;
+    }
+
+    function placeBet(amount) {
+      if (bank < amount) {
+        setMessage("You don't have enough chips.");
+        return;
+      }
+      bet = amount;
+      bank -= amount;
+      updateBank();
+      startGame();
+    }
+
+    function startGame() {
+      playerCards = [drawCard(), drawCard()];
+      dealerCards = [drawCard(), drawCard()];
+      gameOver = false;
+      document.getElementById('gameplay').style.display = 'block';
+      document.getElementById('rules').style.display = 'none';
+      document.getElementById('pre-game').style.display = 'none';
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('final-message').textContent = '';
+      setMessage("");
+      renderHands();
+    }
+
+    function endRound(message) {
+      setMessage(message);
+      document.getElementById('final-message').textContent = message;
+      document.getElementById('gameplay').style.display = 'none';
+      document.getElementById('pre-game').style.display = 'block';
+      renderHands(false);
+      document.getElementById('final-dealer-hand').textContent = `${dealerCards.join(', ')} (Total: ${sumHand(dealerCards)})`;
+      document.getElementById('final-player-hand').textContent = `${playerCards.join(', ')} (Total: ${sumHand(playerCards)})`;
+      document.getElementById('result').style.display = 'block';
+      if (bank <= 0) {
+        alert("You're out of chips! Game resets.");
+        bank = 100;
+        updateBank();
+      }
+    }
+
+    function hit() {
+      if (gameOver) return;
+      playerCards.push(drawCard());
+      let total = sumHand(playerCards);
+      if (total > 21) {
+        gameOver = true;
+        endRound("Bust! You lose.");
+      } else if (total === 21) {
+        stand();
+      } else {
+        renderHands();
+      }
+    }
+
+    function stand() {
+      if (gameOver) return;
+      gameOver = true;
+      while (sumHand(dealerCards) < 17) {
+        dealerCards.push(drawCard());
+      }
+
+      let playerTotal = sumHand(playerCards);
+      let dealerTotal = sumHand(dealerCards);
+
+      if (dealerTotal > 21 || playerTotal > dealerTotal) {
+        bank += bet * 2;
+        updateBank();
+        endRound("You win!");
+      } else if (dealerTotal === playerTotal) {
+        bank += bet;
+        updateBank();
+        endRound("Push. It's a tie.");
+      } else {
+        endRound("Dealer wins. You lose.");
+      }
+    }
+
+    function doubleBet() {
+      if (bank < bet) {
+        setMessage("Not enough chips to double.");
+        return;
+      }
+      bank -= bet;
+      bet *= 2;
+      updateBank();
+      hit();
+      if (!gameOver) stand();
+    }
+
+    function setMessage(msg) {
+      document.getElementById('message').textContent = msg;
+    }
+  </script>
+</body>
+</html>
